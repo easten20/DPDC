@@ -13,9 +13,11 @@ public class RunningProgramm {
 	 * @param args
 	 * @throws IOException 
 	 */
-	public static void main(String[] args) throws IOException{				
+	public static void main(String[] args) throws IOException{
+			long start = System.currentTimeMillis();				
 			Infrastructure build = new Infrastructure();					
-			build.CheckDependencies();
+			build.CheckDependencies();		
+			System.out.println("Duration in ms: " + (System.currentTimeMillis() - start));
 			
 	}
 
