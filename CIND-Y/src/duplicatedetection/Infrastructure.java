@@ -8,7 +8,7 @@ import java.io.InputStreamReader;
 import java.util.Arrays;
 
 public class Infrastructure {
-	String tableLocation = "D:\\university\\Data Profiling and Data Cleansing\\exercise4\\addresses.tsv";
+	String tableLocation;
 
 	public Infrastructure(String tableLocation)
 	{
