@@ -8,34 +8,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import duplicatedetection.enums.columnInfo;
+import duplicatedetection.enums.typeOfSearch;
+
 public class TestProgramm {
 
 	
-	/**
-	 * 
-	 * @author easten
-	 * to get columnInfo index please use ordinal 
-	 * for example:
-	 * columnInfo.id.ordinal() will return 0;
-	 */
-	public enum columnInfo 
-	{
-		id, 
-		culture, 
-		sex, 
-		age, 
-		date_of_birth, 
-		title, 
-		given_name, 
-		surname, 
-		state, 
-		suburb, 
-		postcode, 
-		street_number, 
-		address_1, 
-		address_2, 
-		phone_number
-	}
+	
 	
 	/**
 	 * @param args
@@ -44,14 +23,25 @@ public class TestProgramm {
 		try
 		{
 			Infrastructure test = new Infrastructure("C:\\DPDC_Exercise4\\addresses.tsv");
-			HashMap<String, ArrayList<Integer>> grouping = test.GroupFileHashMap(new int[] { columnInfo.culture.ordinal(), columnInfo.postcode.ordinal(),columnInfo.date_of_birth.ordinal() });
-			Set<Integer> groupIndex = new HashSet<Integer>();			
-			for (String key: grouping.keySet())
-			{							
-				ArrayList<Integer> group = grouping.get(key);			
-				groupIndex.add(group.get(0));								
-			}			
-			test.CreateFileBasedOnIndex(groupIndex, "C:\\DPDC_Exercise4\\test.tsv");									
+			SearchParameter searchParam1 = new SearchParameter(columnInfo.culture, typeOfSearch.INDEX);
+			SearchParameter searchParam2 = new SearchParameter(columnInfo.date_of_birth, typeOfSearch.INDEX);
+			SearchParameter searchParam3 = new SearchParameter(columnInfo.given_name, typeOfSearch.PREFIX, 2);
+			HashMap<String, Set<Integer>> grouping1 = test.GroupFileHashMap(new SearchParameter[] { searchParam1, searchParam2, searchParam3 });								
+			ArrayList<Set<Integer>> resultFile1 = test.CheckRowSimilarity(grouping1);						
+			
+			searchParam1 = new SearchParameter(columnInfo.surname, typeOfSearch.PREFIX, 2);
+			searchParam2 = new SearchParameter(columnInfo.postcode, typeOfSearch.INDEX);
+			searchParam3 = new SearchParameter(columnInfo.sex, typeOfSearch.INDEX);
+			HashMap<String, Set<Integer>> grouping2 = test.GroupFileHashMap(new SearchParameter[] { searchParam1, searchParam2, searchParam3 });								
+			ArrayList<Set<Integer>> resultFile2 = test.CheckRowSimilarity(grouping2);
+			
+			//take a long time to intersect to collection
+			//resultFile1 = test.CombineIntersectSet(resultFile1, resultFile2);
+			//System.out.println("finish intersect");
+			
+			
+			test.CreateResultFile(resultFile1, "C:\\DPDC_Exercise4\\test.tsv");
+			
 		}
 		catch (Exception ex)
 		{

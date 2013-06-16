@@ -1,5 +1,7 @@
 package duplicatedetection;
 
+import duplicatedetection.enums.columnInfo;
+import duplicatedetection.enums.typeOfSearch;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
@@ -130,33 +132,11 @@ public class Infrastructure {
 			br.close();
 			fileStream.close();					
 			return length;
-	}
+	}	
 	
-	public Set<String> GroupFile(int[] groupParameters) throws IOException
+	public HashMap<String, Set<Integer>> GroupFileHashMap(SearchParameter[] groupParameters) throws IOException
 	{		
-			Set<String> groupComb = new HashSet<String>(); 
-			FileInputStream fileStream = new FileInputStream(this.tableLocation);
-			DataInputStream in = new DataInputStream(fileStream);
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;
-			while (null!=(strLine=br.readLine()))
-			{				
-				String[] columns = strLine.split("\t");
-				String strComb = ""; 
-				for (int i = 0; i < groupParameters.length; i++)
-				{
-					strComb += columns[groupParameters[i]];
-				}
-				groupComb.add(strComb);
-			}			
-			br.close();
-			fileStream.close();
-			return groupComb;			
-	}
-	
-	public HashMap<String, ArrayList<Integer>> GroupFileHashMap(int[] groupParameters) throws IOException
-	{		
-			HashMap<String, ArrayList<Integer>> hashMapComb = new HashMap<>(); 
+			HashMap<String, Set<Integer>> hashMapComb = new HashMap<>(); 
 			FileInputStream fileStream = new FileInputStream(this.tableLocation);
 			DataInputStream in = new DataInputStream(fileStream);
 			BufferedReader br = new BufferedReader(new InputStreamReader(in));
@@ -165,9 +145,14 @@ public class Infrastructure {
 			{				
 				String[] columns = strLine.split("\t");
 				String strComb = ""; 
-				for (int i = 0; i < groupParameters.length; i++)				
-					strComb += columns[groupParameters[i]];
-				ArrayList<Integer> listIndexes = new ArrayList<Integer>();
+				String value = "";
+				for (int i = 0; i < groupParameters.length; i++)
+				{
+					SearchParameter searchParam = groupParameters[i];
+					value = columns[searchParam.GetColumnIndex()];					
+				    strComb += searchParam.GetColumnValue(value);																					
+				}
+				Set<Integer> listIndexes = new HashSet<Integer>();
 				if (hashMapComb.containsKey(strComb))				
 					listIndexes = hashMapComb.get(strComb);				
 				listIndexes.add(Integer.parseInt(columns[0]));				
@@ -193,18 +178,86 @@ public class Infrastructure {
 		}			
 		br.close();
 		fileStream.close();		
-	}
+	}	
 	
-	public void CreateFileBasedOnIndex(Set<Integer> indexes, String targetLocation) throws IOException
+	public void CreateResultFile(ArrayList<Set<Integer>> resultCollection, String targetLocation) throws IOException
 	{							
 			BufferedWriter bufferedWriter = new BufferedWriter ( new FileWriter ( targetLocation ) );			
-		    for (Integer index: indexes)
+		    for (Set<Integer> result: resultCollection)
 		    {
-		    	bufferedWriter.write(this.GetRowFullByIndex(index));
+		    	String resultRows = "";
+		    	for (Integer index: result)
+		    	{
+		    		resultRows += index + "\t";
+		    	}
+		    	resultRows = resultRows.substring(0, resultRows.length() - 1);
+		    	bufferedWriter.write(resultRows);
 		    	bufferedWriter.newLine();
 		    }
 		    bufferedWriter.flush();
 		    bufferedWriter.close();
 	}
 	
+	public ArrayList<Set<Integer>> CheckRowSimilarity(HashMap<String, Set<Integer>> hashMapComb)
+	{
+		ArrayList<Set<Integer>> arrayListSimSet = new ArrayList<Set<Integer>>();
+		for (Set<Integer> collIndexes: hashMapComb.values())
+		{			
+			if (collIndexes.size() > 1)
+			{
+				Set<Integer> similarRowsSet = new HashSet<>();
+				//do similarity check				
+				
+				similarRowsSet.addAll(collIndexes);
+				if (similarRowsSet.size() > 1)
+				{					
+					arrayListSimSet.add(similarRowsSet);
+				}
+			}
+		}
+		return arrayListSimSet;
+	}
+	
+	public ArrayList<Set<Integer>> CheckRowSimilarity(ArrayList<Set<Integer>> collectionIndexes)
+	{
+		ArrayList<Set<Integer>> arrayListSimSet = new ArrayList<Set<Integer>>();
+		for (Set<Integer> collIndexes: collectionIndexes)
+		{			
+			if (collIndexes.size() > 1)
+			{
+				Set<Integer> similarRowsSet = new HashSet<>();
+				
+				//do similarity check				
+				
+				similarRowsSet.addAll(collIndexes);
+				if (similarRowsSet.size() > 1)
+				{					
+					arrayListSimSet.add(similarRowsSet);
+				}
+			}
+		}
+		return arrayListSimSet;
+	}
+	
+	public ArrayList<Set<Integer>> CombineIntersectSet(ArrayList<Set<Integer>> collection1, ArrayList<Set<Integer>> collection2)
+	{
+		for (Set<Integer> set1: collection1)
+		{
+			for (Set<Integer> set2: collection2)
+			{
+				Set<Integer> intersectSet = new HashSet<Integer>(set2);
+				intersectSet.retainAll(set1);
+				if (intersectSet.size() > 0)
+				{
+					set1.addAll(set2);
+					collection2.remove(set2);
+					break; 
+					//we use break because we assume only one intersection happens
+				}
+			}			
+			
+		}		
+		return collection1;
+	}	
+		
 }
