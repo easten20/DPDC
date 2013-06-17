@@ -6,27 +6,48 @@ import com.wcohen.ss.MongeElkan;
 
 public class Similarity {
 	
-	static double threshold = 0.7;
+	static double thresholdForColumn = 0.7;
+	static double thresholdForRow = 0.7;
+	static int numberOfColumns = 13;
 	
 	public Similarity()
 	{
 		
 	}
 	
-	private double ScoreOfSimilarity(String value1, String value2){
+	private double ScoreOfSimilarityForEachColumn(String value1, String value2){
 		
 		MongeElkan mongeElkan = new MongeElkan();
 		
 		return mongeElkan.score(value1, value2); 		// 0 < scoreOfSimilarity < 1
 	}
 	
-	private boolean isSame(String value1, String value2)
+	private boolean AreTwoColumnsSame(String value1, String value2)
 	{
 		MongeElkan mongeElkan = new MongeElkan();
 		
 		double scoreOfSimilarity = mongeElkan.score(value1, value2); // 0 < scoreOfSimilarity < 1
 		
-		if(scoreOfSimilarity > threshold) return true;
+		if(scoreOfSimilarity > thresholdForColumn) return true;
 		else return false;
 	}	
+	
+	
+	private double ScoreOfSimilarityForEntireRow(String[] value1, String[] value2){
+		
+		double sumOfSimilarityScore = 0;
+		
+		for(int i = 0;i<numberOfColumns;i++){
+			sumOfSimilarityScore += ScoreOfSimilarityForEachColumn(value1[i],value2[i]); 
+		}
+		
+		return sumOfSimilarityScore/numberOfColumns;
+	}
+	
+	private boolean AreTwoRowsSame(String[] value1, String[] value2){
+		
+		if(ScoreOfSimilarityForEntireRow(value1,value2) > thresholdForRow) return true;
+		else return false;
+	}
+	
 }
