@@ -33,7 +33,7 @@ public class Similarity {
 	}	
 	
 	
-	private double ScoreOfSimilarityForEntireRow(String[] value1, String[] value2){
+	private double ScoreOfSimilarityForEntireRow(String[] value1, String[] value2){ //compare two rows. First compare each columns and calculate similarity for each column, and get the sum of all of them. And then divide by the number of columns to retrieve average similarity between two rows. 
 		
 		double sumOfSimilarityScore = 0;
 		
