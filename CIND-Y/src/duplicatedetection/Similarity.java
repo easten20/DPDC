@@ -8,7 +8,7 @@ public class Similarity {
 	
 	static double thresholdForColumn = 0.7;
 	static double thresholdForRow = 0.7;
-	static int numberOfColumns = 13;
+	static int numberOfColumns = 15;
 	
 	public Similarity()
 	{
@@ -38,13 +38,15 @@ public class Similarity {
 		double sumOfSimilarityScore = 0;
 		
 		for(int i = 0;i<numberOfColumns;i++){
+			if (i == 0) //we don't compare columns[0] == id
+				continue;
 			sumOfSimilarityScore += ScoreOfSimilarityForEachColumn(value1[i],value2[i]); 
 		}
 		
 		return sumOfSimilarityScore/numberOfColumns;
 	}
 	
-	private boolean AreTwoRowsSame(String[] value1, String[] value2){
+	public boolean AreTwoRowsSame(String[] value1, String[] value2){
 		
 		if(ScoreOfSimilarityForEntireRow(value1,value2) > thresholdForRow) return true;
 		else return false;

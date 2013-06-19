@@ -11,6 +11,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -20,83 +21,47 @@ import java.util.Set;
 
 public class Infrastructure {
 	String tableLocation;	
-
-	FileInputStream fileStream;
-	Map<Integer, Integer> mapPostiontoIndex = new HashMap<Integer, Integer>();
+	
+	IndexFile indexFile;
 	
 	public Infrastructure(String tableLocation) throws IOException
 	{
-		this.tableLocation = tableLocation;
-		fileStream = new FileInputStream(this.tableLocation);
-		this.MapIndexToPosition();
+		this.tableLocation = tableLocation;		
+		this.indexFile = new IndexFile(tableLocation,5000);
+	
 	}
 	
-	public String[] GetRowByPosition(int stopPosition) throws IOException
-	{
-		FileInputStream fileStream = new FileInputStream(this.tableLocation);
-		DataInputStream in = new DataInputStream(fileStream);
-		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		int position = 0;
-		String strLine;
-		String[] columns = null;
-		while ((strLine = br.readLine()) != null)
-		{
-			if (stopPosition == position)
-			{
-				columns = strLine.split("\t");						
-				break;
-			}
-			position++;
-		}
-		br.close();		
-		return columns;
-	}
-	
+	/**
+	 * use this method to get array of columns of each row index
+	 * @param index
+	 * @return
+	 * @throws IOException
+	 */
 	public String[] GetRowByIndex(int index) throws IOException
-	{
-		FileInputStream fileStream = new FileInputStream(this.tableLocation);
-		DataInputStream in = new DataInputStream(fileStream);
-		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		int position = 0;
+	{		
 		String strLine;
-		String[] columns = null;
-		int stopPosition = this.mapPostiontoIndex.get(index);
-		while ((strLine = br.readLine()) != null)
-		{
-			if (stopPosition == position)
-			{
-				columns = strLine.split("\t");						
-				break;
-			}
-			position++;
-		}
-		br.close();		
+		String[] columns = null;			
+		strLine = this.indexFile.GetIndexFileChannel(index);				
+		columns = strLine.split("\t");		
 		return columns;
 	}
-	
+	/**
+	 * return all the string of the row  
+	 * @param index
+	 * @return
+	 * @throws IOException
+	 */
 	public String GetRowFullByIndex(int index) throws IOException
-	{
-		FileInputStream fileStream = new FileInputStream(this.tableLocation);
-		DataInputStream in = new DataInputStream(fileStream);
-		BufferedReader br = new BufferedReader(new InputStreamReader(in));	
+	{		
 		String strLine;		
-		int position = 0;
-		int stopPosition = this.mapPostiontoIndex.get(index);
-		while ((strLine = br.readLine()) != null)
-		{			
-			if (position == stopPosition)
-				break;
-			position++;
-		}
-		br.close();		
+		strLine = this.indexFile.GetIndexFileChannel(index);						
 		return strLine;
-	}
+	}	
 	
-	public void dispose() throws IOException
-	{
-		fileStream.close();
-	}
-	
+	/**
+	 * currently not being used
+	 * @param topN
+	 */
 	public void ReadFile(int topN) 
 	{
 		try
@@ -119,6 +84,11 @@ public class Infrastructure {
 		}
 	}
 	
+	/**
+	 * currentyly not being used
+	 * @return
+	 * @throws IOException
+	 */
 	public int GetFileLength() throws IOException 
 	{
 		int length = 0;		
@@ -133,25 +103,42 @@ public class Infrastructure {
 			fileStream.close();					
 			return length;
 	}	
-	
+
+	/**
+	 * this function will grouping all the value in the file 
+	 * based on the parameter
+	 * @param groupParameters
+	 * @return set of the rows including the group name as the key 
+	 * @throws IOException
+	 */
 	public HashMap<String, Set<Integer>> GroupFileHashMap(SearchParameter[] groupParameters) throws IOException
 	{		
 			HashMap<String, Set<Integer>> hashMapComb = new HashMap<>(); 
 			FileInputStream fileStream = new FileInputStream(this.tableLocation);
 			DataInputStream in = new DataInputStream(fileStream);
 			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;						
+			String strLine;				
+			boolean skipInsert = false;
 			while (null!=(strLine=br.readLine()))
 			{				
 				String[] columns = strLine.split("\t");
 				String strComb = ""; 
 				String value = "";
+				skipInsert = false;
 				for (int i = 0; i < groupParameters.length; i++)
 				{
 					SearchParameter searchParam = groupParameters[i];
-					value = columns[searchParam.GetColumnIndex()];					
-				    strComb += searchParam.GetColumnValue(value);																					
+					value = columns[searchParam.GetColumnIndex()];
+					value = searchParam.GetColumnValue(value.toLowerCase().trim());
+					if (value.isEmpty() || value == null)
+					{						
+						skipInsert = true;
+						break;
+					}
+				    strComb += value;																					
 				}
+				if (skipInsert == true)
+					continue;
 				Set<Integer> listIndexes = new HashSet<Integer>();
 				if (hashMapComb.containsKey(strComb))				
 					listIndexes = hashMapComb.get(strComb);				
@@ -163,23 +150,14 @@ public class Infrastructure {
 			return hashMapComb;			
 	}
 	
-	private void MapIndexToPosition() throws IOException
-	{
-		FileInputStream fileStream = new FileInputStream(this.tableLocation);
-		DataInputStream in = new DataInputStream(fileStream);
-		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		String strLine;
-		int position = 0;
-		while (null!=(strLine=br.readLine()))
-		{				
-			String[] columns = strLine.split("\t");
-			this.mapPostiontoIndex.put(Integer.parseInt(columns[0]), position);
-			position++;
-		}			
-		br.close();
-		fileStream.close();		
-	}	
-	
+	/**
+	 * create result file .tsv 
+	 * the result will be the index of the rows
+	 * example : 2031\t1009
+	 * @param resultCollection
+	 * @param targetLocation
+	 * @throws IOException
+	 */
 	public void CreateResultFile(ArrayList<Set<Integer>> resultCollection, String targetLocation) throws IOException
 	{							
 			BufferedWriter bufferedWriter = new BufferedWriter ( new FileWriter ( targetLocation ) );			
@@ -198,47 +176,130 @@ public class Infrastructure {
 		    bufferedWriter.close();
 	}
 	
-	public ArrayList<Set<Integer>> CheckRowSimilarity(HashMap<String, Set<Integer>> hashMapComb)
+	/**
+	 * it use to check the similarity between rows group
+	 * based on the hashmap parameter
+	 * example group {1001,2002,500} 
+	 * if 1001 and 2002 are similar then the result will be
+	 * {1001,2002} 
+	 * 500 not included because the similar level is below threshhold	
+	 * @param hashMapComb
+	 * @return
+	 * @throws IOException
+	 */
+	public ArrayList<Set<Integer>> CheckRowSimilarity(HashMap<String, Set<Integer>> hashMapComb) throws IOException
 	{
 		ArrayList<Set<Integer>> arrayListSimSet = new ArrayList<Set<Integer>>();
+		Similarity similarity = new Similarity();
+		int totalHashMap = hashMapComb.keySet().size();
+		int currentCheck = 0;
 		for (Set<Integer> collIndexes: hashMapComb.values())
-		{			
+		{														
+			currentCheck++;
+			System.out.println("current check " + currentCheck + " out of " + totalHashMap); 
 			if (collIndexes.size() > 1)
-			{
-				Set<Integer> similarRowsSet = new HashSet<>();
-				//do similarity check				
-				
-				similarRowsSet.addAll(collIndexes);
-				if (similarRowsSet.size() > 1)
-				{					
-					arrayListSimSet.add(similarRowsSet);
-				}
+			{				
+				Set<Integer> removeCandidateTarget = new HashSet<>();
+				Integer[] arraysCandidate = collIndexes.toArray(new Integer[0]);
+				for (int i = 0; i < arraysCandidate.length-1; i++)
+				{
+					Integer candidate = arraysCandidate[i]; 
+					if (removeCandidateTarget.contains(candidate))
+						continue;
+					Set<Integer> similarRowsSet = new HashSet<>();					
+					similarRowsSet.add(candidate);
+					String[] candidateColumns = this.GetRowByIndex(candidate);					
+					for (int j = i+1; j < arraysCandidate.length; j++)
+					{
+						Integer candidateTarget = arraysCandidate[j];
+						if (candidateTarget == candidate) //we don't want to compare with itself
+							continue;
+						String[] candidateTargetColumns = this.GetRowByIndex(candidateTarget);
+						if (similarity.AreTwoRowsSame(candidateColumns, candidateTargetColumns))
+						{
+							similarRowsSet.add(candidateTarget);
+							removeCandidateTarget.add(candidateTarget);
+							System.out.println("row number :" + candidateColumns[0]);
+							System.out.println(Arrays.toString(candidateColumns));
+							System.out.println("equal to row number :" + candidateTargetColumns[0]);
+							System.out.println(Arrays.toString(candidateTargetColumns));
+							System.out.println("\n\n");
+						}
+					}
+					if (similarRowsSet.size() > 1)						
+					{
+						arrayListSimSet.add(similarRowsSet);
+					}
+				}								
 			}
 		}
 		return arrayListSimSet;
 	}
 	
-	public ArrayList<Set<Integer>> CheckRowSimilarity(ArrayList<Set<Integer>> collectionIndexes)
+	/**
+	 * same method as CheckRowSimilarity (see above)
+	 * but different parameter 
+	 * @param collectionIndexes
+	 * @return
+	 * @throws IOException
+	 */
+	public ArrayList<Set<Integer>> CheckRowSimilarity(ArrayList<Set<Integer>> collectionIndexes) throws IOException
 	{
 		ArrayList<Set<Integer>> arrayListSimSet = new ArrayList<Set<Integer>>();
+		Similarity similarity = new Similarity();
+		int totalHashMap = collectionIndexes.size();
+		int currentCheck = 0;
 		for (Set<Integer> collIndexes: collectionIndexes)
-		{			
+		{														
+			currentCheck++;
+			System.out.println("current check " + currentCheck + " out of " + totalHashMap); 
 			if (collIndexes.size() > 1)
-			{
-				Set<Integer> similarRowsSet = new HashSet<>();
-				
-				//do similarity check				
-				
-				similarRowsSet.addAll(collIndexes);
-				if (similarRowsSet.size() > 1)
-				{					
-					arrayListSimSet.add(similarRowsSet);
-				}
+			{				
+				Set<Integer> removeCandidateTarget = new HashSet<>();
+				Integer[] arraysCandidate = collIndexes.toArray(new Integer[0]);
+				for (int i = 0; i < arraysCandidate.length-1; i++)
+				{
+					Integer candidate = arraysCandidate[i]; 
+					if (removeCandidateTarget.contains(candidate))
+						continue;
+					Set<Integer> similarRowsSet = new HashSet<>();					
+					similarRowsSet.add(candidate);
+					String[] candidateColumns = this.GetRowByIndex(candidate);					
+					for (int j = i+1; j < arraysCandidate.length; j++)
+					{
+						Integer candidateTarget = arraysCandidate[j];
+						if (candidateTarget == candidate) //we don't want to compare with itself
+							continue;
+						String[] candidateTargetColumns = this.GetRowByIndex(candidateTarget);
+						if (similarity.AreTwoRowsSame(candidateColumns, candidateTargetColumns))
+						{
+							similarRowsSet.add(candidateTarget);
+							removeCandidateTarget.add(candidateTarget);
+							System.out.println("row number :" + candidateColumns[0]);
+							System.out.println(Arrays.toString(candidateColumns));
+							System.out.println("equal to row number :" + candidateTargetColumns[0]);
+							System.out.println(Arrays.toString(candidateTargetColumns));
+							System.out.println("\n\n");
+						}
+					}
+					if (similarRowsSet.size() > 1)						
+					{
+						arrayListSimSet.add(similarRowsSet);
+					}
+				}								
 			}
 		}
 		return arrayListSimSet;
 	}
 	
+	/**
+	 * to intersect two different set  from different group
+	 * example group 1: {1001, 2002 } group 2 : {2002, 3003}
+	 * result {1001,2002,3003}
+	 * @param collection1
+	 * @param collection2
+	 * @return
+	 */
 	public ArrayList<Set<Integer>> CombineIntersectSet(ArrayList<Set<Integer>> collection1, ArrayList<Set<Integer>> collection2)
 	{
 		for (Set<Integer> set1: collection1)
@@ -249,8 +310,10 @@ public class Infrastructure {
 				intersectSet.retainAll(set1);
 				if (intersectSet.size() > 0)
 				{
-					set1.addAll(set2);
-					collection2.remove(set2);
+					System.out.println("Intersection : " + Arrays.toString(set1.toArray()) + " and " + Arrays.toString(set2.toArray()));					
+					set1.addAll(set2);					
+					System.out.println("result : " + Arrays.toString(set1.toArray()));
+					collection2.remove(set2);				
 					break; 
 					//we use break because we assume only one intersection happens
 				}
